@@ -4,22 +4,32 @@ let _ = {
 }
 
 _.doc = {
-    TYPES: {
-        BACK_COLOR: "backColor",
-        BOLD: "bold"
+    get: () => {
+        if (window.getSelection)
+            return selection = window.getSelection();
+        return null;
     },
-    CARET: "<hsc-caret></hsc-caret>",//¥
-    cmd: (command, val = "") => {
-        //execCommand is deprecated -> https://w3c.github.io/input-events/
-        return document.execCommand(command, false, val)
+    rep: (val) => {
+        //https://stackoverflow.com/questions/3997659/replace-selected-text-in-contenteditable-div/3997896#3997896
+        let selection, range;
+        if (window.getSelection) {
+            selection = window.getSelection();
+            if (selection.rangeCount) {
+                range = selection.getRangeAt(0);
+                range.deleteContents();
+                range.insertNode(document.createTextNode(val));
+            }
+        } else if (document.selection && document.selection.createRange) {
+            range = document.selection.createRange();
+            range.text = val;
+        }
     },
-    pos: (editor) => {
-        return editor.innerHTML.indexOf(_.doc.CARET)
-    },
-    put: (doc, char) => {
-        doc.innerHTML = doc.innerHTML.replace(_.doc.CARET, "¶");
-        doc.innerHTML = doc.innerHTML.replace("¶", char + "¶");
-        doc.innerHTML = doc.innerHTML.replace("¶", _.doc.CARET);
+    put: (editor_id, startTag, endTag) => {
+        let v = _.doc.get();
+        _.doc.rep("§" + v + "¥");
+        _.i(editor_id).innerHTML = _.i(editor_id).innerHTML.replace("Â", "");
+        _.i(editor_id).innerHTML = _.i(editor_id).innerHTML.replace("§", startTag);
+        _.i(editor_id).innerHTML = _.i(editor_id).innerHTML.replace("¥", endTag);
     }
 }
 
@@ -33,26 +43,22 @@ let hsc = {
 hsc.editor = {
     init: (holder) => {
         _.i(holder).innerHTML = `
-        <button onclick="_.doc.cmd(_.doc.TYPE.BACK_COLOR,'#21abc3')">BACK_COLOR</button>
-        <button onclick="_.doc.cmd(_.doc.TYPE.BOLD)">BOLD</button>
+        <button onclick="hsc.editor.cmd.highlight('${holder}_editor')">HighLight</button>
+        <button onclick="hsc.editor.cmd.bold('${holder}_editor')">Bold</button>
+        <button onclick="hsc.editor.cmd.italic('${holder}_editor')">Italic</button>
         
-        <hsc-editor id=${holder}_editor>
-        ABC${_.doc.CARET}DEF
+        <hsc-editor id="${holder}_editor" contenteditable="true">
+        ABCDEF
         </hsc-editor>
         `
-        let editor = _.i(holder + "_editor");
-        document.addEventListener('keydown', (e) => {
-            if (e.key.length == 1)
-                _.doc.put(editor, e.key)
-            else {
-                if (e.key === "Enter")
-                    _.doc.put(editor, "<br/>")
-            }
-        }, false);
-
-        ele.addEventListener('keydown', function () {
-            //code
-        }, false);
-
+        //let editor = _.i(holder + "_editor");
+        //document.addEventListener('keydown', (e) => {
+        //    //e.key
+        //}, false);
+    },
+    cmd: {
+        highlight: (el) => _.doc.put(el, "<span style='color:yellow'>", "</span>"),
+        bold: (el) => _.doc.put(el, "<strong>", "</strong>"),
+        italic: (el) => _.doc.put(el, "<i>", "</i>"),
     }
 }
